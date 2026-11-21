@@ -1,0 +1,56 @@
+NEON + RENDER DEPLOYMENT NOTES
+================================
+
+IMPORTANT: This is a PostgreSQL backend port and deployment starter, not a completed frontend migration.
+The current script.js still has prototype/localStorage behavior. Do not use real student records until all UI operations are migrated to the API and tested.
+
+1. DATABASE (NEON)
+- Create a Neon PostgreSQL project.
+- Open Neon SQL Editor.
+- Run sql/schema.neon.sql.
+- Copy the connection details from Neon (host, database, user, password).
+- Use the direct connection host and require SSL. Do not put database credentials in JavaScript or commit them to GitHub.
+
+2. GITHUB
+- Upload the contents of this folder (school-portal-secure) to a GitHub repository.
+- Keep config/config.php out of source control if it contains secrets. This version reads environment variables instead.
+- The existing config/config.php file contains no hard-coded credentials; on Render, environment variables provide all secrets.
+
+3. RENDER
+- Create a new Web Service from the GitHub repository.
+- Select Docker as runtime (Render detects render.yaml if using Blueprint).
+- Set these environment variables:
+  APP_ENV=production
+  APP_BASE_URL=https://YOUR-SERVICE.onrender.com
+  DB_HOST=your-neon-hostname
+  DB_PORT=5432
+  DB_NAME=your-neon-database-name
+  DB_USER=your-neon-username
+  DB_PASSWORD=your-neon-password
+  DB_SSLMODE=require
+  UPLOAD_DIR=/var/data/private_uploads
+  RETENTION_CRON_SECRET=generate-a-long-random-secret
+- Ensure a persistent disk is attached at /var/data for uploaded documents. Persistent disks may require a paid Render plan. Without one, local uploads can disappear on redeploy/restart. For larger production systems, use private object storage.
+- Set the health check path to /.
+
+4. PHP EXTENSIONS
+Dockerfile installs PDO PostgreSQL, PostgreSQL, and fileinfo. PHP upload limits are configured for the document endpoint.
+
+5. CREATE FIRST ADMIN
+Do not use the demo accounts in script.js. Create an administrator through a one-time secure provisioning process.
+For local Docker/CLI with environment variables set:
+  php tools/create_admin.php
+On Render, use a one-off shell/console if available, or temporarily run a protected one-time provisioning command and remove it immediately. Never expose an unauthenticated public admin-creation route.
+
+6. CRITICAL FRONTEND WORK STILL REQUIRED
+README-SETUP.txt describes this accurately: script.js still stores much of the portal data in localStorage. The API bridge currently only attempts session bootstrap and some data reads; login, registration, project management, application submit/review, notifications, admin management, reports, and document uploads must be connected and tested end-to-end.
+Do not rely on the localStorage fallback in production. Remove demo credentials and disable prototype fallback for production after API integration.
+
+7. SECURITY / OPERATIONS
+- Enable HTTPS (Render provides it).
+- Restrict access to private uploads; never serve the storage directory as static public files.
+- Configure real transactional email delivery before enabling password recovery.
+- Back up Neon data and test restoration.
+- Test student/admin/superadmin permissions using separate accounts.
+- Check school privacy requirements and obtain school ICT approval before processing real student documents.
+- Test database migrations on a staging database first.

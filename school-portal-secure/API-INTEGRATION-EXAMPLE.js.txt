@@ -1,0 +1,62 @@
+/* EXAMPLE ONLY: use these helpers when migrating script.js to the PHP API.
+   Do not add database credentials to JavaScript. API and frontend should share origin. */
+const API = 'api/';
+let csrfToken = '';
+
+async function apiRequest(path, options = {}) {
+  const method = (options.method || 'GET').toUpperCase();
+  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+  if (method !== 'GET') headers['X-CSRF-Token'] = csrfToken;
+  const response = await fetch(API + path, {
+    ...options, method, headers, credentials: 'same-origin'
+  });
+  const body = await response.json();
+  if (!response.ok) throw new Error(body.error || 'Request failed');
+  return body;
+}
+
+async function initializeApiSession() {
+  const data = await apiRequest('auth.php?action=me');
+  csrfToken = data.csrf;
+  return data.user;
+}
+
+// Student login: API checks email/password, account approval and session.
+async function secureLogin(email, password) {
+  const csrf = await apiRequest('auth.php?action=csrf');
+  csrfToken = csrf.csrf;
+  const data = await apiRequest('auth.php?action=login', {
+    method: 'POST', body: JSON.stringify({ email, password })
+  });
+  csrfToken = data.csrf;
+  return data.user;
+}
+
+// Fetch the database-backed project list.
+async function loadProjectsFromDatabase() {
+  return (await apiRequest('projects.php')).projects;
+}
+
+// Student application submission. Never trust client-side slot checks alone.
+async function submitApplication(projectId, reason, notes = '') {
+  return apiRequest('applications.php', {
+    method: 'POST', body: JSON.stringify({
+      action: 'submit', project_id: projectId, reason, notes
+    })
+  });
+}
+
+// Admin: list every approved student for one selected project.
+async function loadApprovedApplicants(projectId) {
+  const rows = (await apiRequest(`applications.php?project_id=${encodeURIComponent(projectId)}`)).applications;
+  return rows.filter(row => row.status === 'Approved');
+}
+
+// Admin decision. Backend enforces role, slots and one-approved-project rule.
+async function reviewApplication(applicationId, status, note = '') {
+  return apiRequest('applications.php', {
+    method: 'POST', body: JSON.stringify({
+      action: 'review', application_id: applicationId, status, note
+    })
+  });
+}

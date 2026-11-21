@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: school-project-portal
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_BASE_URL
+        sync: false
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: "5432"
+      - key: DB_NAME
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_SSLMODE
+        value: require
+      - key: UPLOAD_DIR
+        value: /var/data/private_uploads
+      - key: RETENTION_CRON_SECRET
+        generateValue: true
+    disk:
+      name: portal-uploads
+      mountPath: /var/data
+      sizeGB: 1
